@@ -21,9 +21,11 @@ func (s *stringSlice) Set(value string) error {
 }
 
 // Parse parses the command-line arguments and returns the configured CLIOptions.
-func Parse() (*types.CLIOptions, error) {
+// It also returns a boolean indicating if the help flag was requested.
+func Parse() (*types.CLIOptions, bool, error) {
 	opts := &types.CLIOptions{}
 	var envs stringSlice
+	var help bool
 
 	fs := flag.NewFlagSet("rcs-go", flag.ContinueOnError)
 
@@ -42,6 +44,7 @@ func Parse() (*types.CLIOptions, error) {
 	fs.StringVar(&opts.ConfigPath, "config", "", "Path to project config file (JSON or TOML)")
 	fs.DurationVar(&opts.Timeout, "timeout", 0, "Command timeout")
 	fs.Var(&envs, "env", "Set environment variables remotely (e.g., KEY=VAL)")
+	fs.BoolVar(&help, "help", false, "Show help message")
 
 	// Find the command separator "--"
 	args := os.Args[1:]
@@ -57,7 +60,7 @@ func Parse() (*types.CLIOptions, error) {
 	if separatorIndex != -1 {
 		// Parse flags before the separator
 		if err := fs.Parse(args[:separatorIndex]); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		// The rest are command arguments
 		if separatorIndex+1 < len(args) {
@@ -66,18 +69,23 @@ func Parse() (*types.CLIOptions, error) {
 	} else {
 		// No separator, parse all args as flags
 		if err := fs.Parse(args); err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		// Command is the remaining non-flag arguments
 		commandArgs = fs.Args()
 	}
 
+	if help {
+		fs.Usage()
+		return nil, true, nil
+	}
+
 	if len(commandArgs) == 0 {
-		return nil, fmt.Errorf("error: command is required")
+		return nil, false, fmt.Errorf("error: command is required")
 	}
 
 	opts.Env = envs
 	opts.Command = commandArgs
 
-	return opts, nil
+	return opts, false, nil
 }
