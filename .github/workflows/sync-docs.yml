@@ -1,0 +1,44 @@
+# GitHub Actions Workflow: Sync Documentation to /docs directory
+
+name: Sync Docs for GitHub Pages
+
+# Controls when the action will run.
+on:
+  # Triggers the workflow on push events but only for the main branch
+  push:
+    branches: [ main ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "sync-docs"
+  sync-docs:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      # Create the docs directory if it doesn't exist
+      - name: Create docs directory
+        run: mkdir -p docs
+
+      # Copies the agent documentation to the location required by GitHub Pages
+      - name: Copy AGENTS.md to docs/index.md
+        run: cp AGENTS.md docs/index.md
+
+      # Checks for changes, and if there are any, commits and pushes them
+      - name: Commit and push if changed
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add docs/index.md
+          # The following command will exit with 0 if there are no changes,
+          # or 1 if there are changes to be committed.
+          # We use || exit 0 to prevent the workflow from failing if there are no changes.
+          git diff --staged --quiet || (git commit -m "docs: Auto-sync AGENTS.md to docs/index.md" && git push)
